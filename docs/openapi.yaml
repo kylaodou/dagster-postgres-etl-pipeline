@@ -1,0 +1,318 @@
+openapi: 3.0.3
+
+info:
+  title: API de synchronisation des produits
+  version: 1.0.0
+  description: |
+    Consultation des produits et du dernier contrôle ETL enregistré.
+    Un contrôle correspond à un chargement validé dans PostgreSQL.
+
+servers:
+  - url: http://127.0.0.1:3000
+    description: Serveur local
+
+tags:
+  - name: Santé
+  - name: Produits
+  - name: Contrôles
+
+paths:
+  /sante:
+    get:
+      tags: [Santé]
+      operationId: verifierSante
+      summary: Vérifier la disponibilité de PostgreSQL
+      responses:
+        "200":
+          description: PostgreSQL est disponible
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [etat, postgresql]
+                properties:
+                  etat:
+                    type: string
+                    enum: [ok]
+                  postgresql:
+                    type: string
+                    enum: [disponible]
+        "503":
+          $ref: "#/components/responses/Indisponible"
+        "500":
+          $ref: "#/components/responses/ErreurInterne"
+
+  /produits:
+    get:
+      tags: [Produits]
+      operationId: listerProduits
+      summary: Lister les produits avec pagination
+      description: |
+        Les produits sont triés par référence.
+        Une base vide ou une page sans résultat renvoie un tableau vide.
+      parameters:
+        - name: page
+          in: query
+          description: Numéro de page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000000
+            default: 1
+        - name: limite
+          in: query
+          description: Nombre maximal de produits par page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Liste paginée des produits
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListeProduits"
+        "400":
+          description: Paramètres de pagination invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Erreur"
+              example:
+                erreur: page et limite doivent etre des entiers positifs.
+        "503":
+          $ref: "#/components/responses/Indisponible"
+        "500":
+          $ref: "#/components/responses/ErreurInterne"
+
+  /produits/{reference}:
+    get:
+      tags: [Produits]
+      operationId: consulterProduit
+      summary: Consulter un produit par sa référence
+      parameters:
+        - name: reference
+          in: path
+          required: true
+          description: Référence unique du produit
+          schema:
+            type: string
+          example: "85123A"
+      responses:
+        "200":
+          description: Produit trouvé
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Produit"
+        "404":
+          description: Produit introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Erreur"
+              example:
+                erreur: Produit introuvable.
+        "503":
+          $ref: "#/components/responses/Indisponible"
+        "500":
+          $ref: "#/components/responses/ErreurInterne"
+
+  /controles/dernier:
+    get:
+      tags: [Contrôles]
+      operationId: consulterDernierControle
+      summary: Consulter le dernier contrôle enregistré
+      description: |
+        Retourne le contrôle du dernier chargement validé.
+        Les échecs techniques sont consultables dans Dagster.
+      responses:
+        "200":
+          description: Dernier contrôle disponible
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Controle"
+        "404":
+          description: Aucun contrôle enregistré
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Erreur"
+              example:
+                erreur: Aucun controle enregistre.
+        "503":
+          $ref: "#/components/responses/Indisponible"
+        "500":
+          $ref: "#/components/responses/ErreurInterne"
+
+components:
+  schemas:
+    Produit:
+      type: object
+      required:
+        - reference
+        - description
+        - prix_unitaire
+        - date_observation
+        - date_modification
+      properties:
+        reference:
+          type: string
+          example: "85123A"
+        description:
+          type: string
+          example: CREAM HANGING HEART T-LIGHT HOLDER
+        prix_unitaire:
+          type: string
+          description: Prix décimal renvoyé comme chaîne pour préserver sa précision
+          example: "2.9500"
+        date_observation:
+          type: string
+          description: Date source sans fuseau horaire
+          example: "2011-12-09 11:34:00"
+        date_modification:
+          type: string
+          format: date-time
+          example: "2026-10-28T00:31:49.987Z"
+
+    ListeProduits:
+      type: object
+      required: [page, limite, total, donnees]
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          example: 1
+        limite:
+          type: integer
+          minimum: 1
+          maximum: 100
+          example: 2
+        total:
+          type: integer
+          minimum: 0
+          description: Nombre total de produits dans la base
+          example: 3958
+        donnees:
+          type: array
+          items:
+            $ref: "#/components/schemas/Produit"
+
+    Bilan:
+      type: object
+      required:
+        - lignes_extraites
+        - lignes_valides
+        - lignes_rejetees
+        - produits_retenus
+        - observations_valides_non_retenues
+        - produits_inseres
+        - produits_modifies
+        - produits_inchanges
+        - rejets_par_motif
+      properties:
+        lignes_extraites:
+          type: integer
+          minimum: 0
+          example: 541909
+        lignes_valides:
+          type: integer
+          minimum: 0
+          example: 540453
+        lignes_rejetees:
+          type: integer
+          minimum: 0
+          example: 1456
+        produits_retenus:
+          type: integer
+          minimum: 0
+          example: 3958
+        observations_valides_non_retenues:
+          type: integer
+          minimum: 0
+          example: 536495
+        produits_inseres:
+          type: integer
+          minimum: 0
+          example: 0
+        produits_modifies:
+          type: integer
+          minimum: 0
+          example: 0
+        produits_inchanges:
+          type: integer
+          minimum: 0
+          example: 3958
+        rejets_par_motif:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
+          example:
+            description_vide: 1454
+            prix_negatif: 2
+
+    Controle:
+      type: object
+      required:
+        - id
+        - fichier_source
+        - empreinte_source
+        - debut
+        - fin
+        - resultat_qualite
+        - bilan
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "89fdd711-c55d-4da2-a19d-c849616742b7"
+        fichier_source:
+          type: string
+          example: online_retail.csv
+        empreinte_source:
+          type: string
+          description: Empreinte SHA-256 du fichier source
+          pattern: "^[a-fA-F0-9]{64}$"
+        debut:
+          type: string
+          format: date-time
+        fin:
+          type: string
+          format: date-time
+        resultat_qualite:
+          type: string
+          enum: [CONFORME, AVEC_REJETS]
+          example: AVEC_REJETS
+        bilan:
+          $ref: "#/components/schemas/Bilan"
+
+    Erreur:
+      type: object
+      required: [erreur]
+      properties:
+        erreur:
+          type: string
+          example: Produit introuvable.
+
+  responses:
+    Indisponible:
+      description: Service de données temporairement indisponible
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Erreur"
+          example:
+            erreur: Service de donnees temporairement indisponible.
+
+    ErreurInterne:
+      description: Erreur interne du serveur
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Erreur"
+          example:
+            erreur: Erreur interne du serveur.
