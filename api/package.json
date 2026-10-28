@@ -1,0 +1,18 @@
+{
+  "name": "api-etl-produits",
+  "version": "1.0.0",
+  "private": true,
+  "description": "API de consultation des produits et des controles ETL",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.8",
+    "express": "^5.3.0",
+    "pg": "^8.23.1"
+  }
+}
