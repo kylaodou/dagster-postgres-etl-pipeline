@@ -1,0 +1,64 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: etl_user
+          POSTGRES_PASSWORD: ci_password
+          POSTGRES_DB: etl_produits
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U etl_user -d etl_produits"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGDATABASE: etl_produits
+      PGUSER: etl_user
+      PGPASSWORD: ci_password
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Creer les tables
+        run: |
+          sudo apt-get install -y postgresql-client
+          psql -h localhost -U etl_user -d etl_produits -v ON_ERROR_STOP=1 -f sql/01_creation_tables.sql
+          psql -h localhost -U etl_user -d etl_produits -v ON_ERROR_STOP=1 -f sql/02_creation_suivi.sql
+        env:
+          PGPASSWORD: ci_password
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Installer les dependances Python
+        run: pip install -r requirements.txt
+
+      - name: Tests Python (transformation, chargement, erreurs)
+        run: python -m unittest discover -s tests -p "test_*.py" -v
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Installer les dependances de l'API
+        working-directory: api
+        run: npm ci
+
+      - name: Tests de l'API
+        working-directory: api
+        run: npm test
