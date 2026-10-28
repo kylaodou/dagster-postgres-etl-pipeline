@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: etl_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PGUSER:-etl_user}
+      POSTGRES_PASSWORD: ${PGPASSWORD:?Fichier .env absent ou PGPASSWORD vide. Copiez .env.exemple en .env (cp .env.exemple .env) puis completez PGPASSWORD.}
+      POSTGRES_DB: ${PGDATABASE:-etl_produits}
+    ports:
+      - "${PGPORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PGUSER:-etl_user} -d ${PGDATABASE:-etl_produits}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
