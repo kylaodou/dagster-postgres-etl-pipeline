@@ -217,7 +217,7 @@ components:
         lignes_extraites:
           type: integer
           minimum: 0
-          example: 541909
+          example: 542009
         lignes_valides:
           type: integer
           minimum: 0
@@ -225,7 +225,7 @@ components:
         lignes_rejetees:
           type: integer
           minimum: 0
-          example: 1456
+          example: 1556
         produits_retenus:
           type: integer
           minimum: 0
@@ -254,6 +254,10 @@ components:
           example:
             description_vide: 1454
             prix_negatif: 2
+            reference_vide: 25
+            prix_non_numerique: 25
+            date_invalide: 25
+            structure_invalide: 25
 
     Controle:
       type: object
@@ -272,7 +276,7 @@ components:
           example: "89fdd711-c55d-4da2-a19d-c849616742b7"
         fichier_source:
           type: string
-          example: online_retail.csv
+          example: product_dataset.csv
         empreinte_source:
           type: string
           description: Empreinte SHA-256 du fichier source

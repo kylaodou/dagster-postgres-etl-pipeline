@@ -1,6 +1,11 @@
+const fs = require("node:fs");
 const path = require("node:path");
 const express = require("express");
+const swaggerUi = require("swagger-ui-express");
+const YAML = require("yaml");
 const { Pool } = require("pg");
+
+const { erreurIndisponible } = require("./basededonnees");
 
 require("dotenv").config({
   path: path.join(__dirname, "..", ".env"),
@@ -35,6 +40,11 @@ const app = express();
 app.disable("x-powered-by");
 app.set("json spaces", 2);
 
+const contratOpenapi = YAML.parse(
+  fs.readFileSync(path.join(__dirname, "..", "docs", "openapi.yaml"), "utf8")
+);
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(contratOpenapi));
+
 // Ne pas ajouter de fuseau horaire à la date d'observation du CSV.
 const colonnesProduit = `
   reference,
@@ -48,16 +58,7 @@ async function interroger(sql, valeurs = []) {
   try {
     return await pool.query(sql, valeurs);
   } catch (erreur) {
-    const code = erreur.code || "";
-
-    const indisponible =
-      code.startsWith("08") ||
-      ["ECONNREFUSED", "ECONNRESET", "ETIMEDOUT",
-       "EHOSTUNREACH", "ENOTFOUND", "57P01",
-       "57P02", "57P03", "53300", "57014"].includes(code) ||
-      /timeout|connection terminated/i.test(erreur.message);
-
-    erreur.status = indisponible ? 503 : 500;
+    erreur.status = erreurIndisponible(erreur) ? 503 : 500;
     throw erreur;
   }
 }
@@ -163,8 +164,6 @@ app.use((erreur, req, res, next) => {
   });
 });
 
-const hote = process.env.API_HOST || "127.0.0.1";
-
-app.listen(3000, hote, () => {
-  console.log(`API en ecoute sur ${hote}:3000`);
+app.listen(3000, "127.0.0.1", () => {
+  console.log("API disponible sur http://localhost:3000");
 });
