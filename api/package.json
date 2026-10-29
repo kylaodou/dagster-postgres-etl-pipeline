@@ -1,18 +1,20 @@
 {
-  "name": "api-etl-produits",
+  "name": "api",
   "version": "1.0.0",
-  "private": true,
-  "description": "API de consultation des produits et des controles ETL",
-  "main": "server.js",
+  "description": "",
+  "main": "index.js",
   "scripts": {
-    "start": "node server.js"
+    "test": "node --test tests/"
   },
-  "engines": {
-    "node": ">=22"
-  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
   "dependencies": {
     "dotenv": "^18.0.8",
     "express": "^5.3.0",
-    "pg": "^8.23.1"
+    "pg": "^8.23.1",
+    "swagger-ui-express": "^5.0.1",
+    "yaml": "^2.9.1"
   }
 }
